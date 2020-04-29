@@ -81,6 +81,11 @@ void BleWifiAppInit(void)
         
         /* RF Power settings */
         BleWifi_RFPowerSetting(BLEWIFI_COM_RF_POWER_SETTINGS);
+        
+        //set TCA mode
+#if (BLEWIFI_WIFI_SET_TCA_MODE == 1)
+        sys_set_rf_temp_cal_mode(true);
+#endif
     }
 
     // update the system mode

@@ -41,23 +41,23 @@ RF Power
 |   +3 DB         |                |                |
 '-----------------'----------------'----------------'
 */
-#define BLEWIFI_COM_RF_POWER_SETTINGS   (0x20)
+#define BLEWIFI_COM_RF_POWER_SETTINGS   (0x00)
 
 /*
 SNTP
 */
 #define SNTP_FUNCTION_EN      (0)                   // SNTP 1: enable / 0: disable
-#define SNTP_SERVER           "1.cn.pool.ntp.org"   // SNTP Server 
+#define SNTP_SERVER           "1.cn.pool.ntp.org"   // SNTP Server
 #define SNTP_PORT_NUM         "123"                 // SNTP port Number
 #define SNTP_TIME_ZONE        (8)                   // Time zone: GMT+8
 
-/* 
-BLE OTA FLAG 
+/*
+BLE OTA FLAG
 */
 #define BLE_OTA_FUNCTION_EN      (1)  // BLE OTA Function Enable (1: enable / 0: disable)
 
-/* 
-WIFI OTA FLAG 
+/*
+WIFI OTA FLAG
 */
 #define WIFI_OTA_FUNCTION_EN     (1)  // WIFI OTA Function Enable (1: enable / 0: disable)
 #define WIFI_OTA_HTTP_URL        "http://192.168.0.100/ota.bin"
@@ -92,7 +92,7 @@ BLE Service UUID
 The max length of device name is 29 bytes.
     method 1: use prefix + mac address
         Ex: OPL_33:44:55:66
-        
+
     method 2: full name
         Ex: OPL1000
 */
@@ -150,20 +150,30 @@ DTIM the times of Interval: ms
 */
 #define BLEWIFI_WIFI_DTIM_INTERVAL                  (2000)      // ms
 
+/*
+WIFI Adjust RSSI : db
+*/
+#define BLEWIFI_WIFI_RSSI_ADJUST                    (-22)        // db
+
+/*
+WIFI Set TCA mode enable
+*/
+#define BLEWIFI_WIFI_SET_TCA_MODE                   (0)          //(1: enable / 0: disable)
+
 
 // The ohter parts
 /* BUTTON SENSOR Config */
 #define BLEWIFI_CTRL_BUTTON_SENSOR_EN               (0)
 #define BLEWIFI_CTRL_BUTTON_IO_PORT                 GPIO_IDX_05
-#define BLEWIFI_CTRL_BUTTON_PRESS_LEVEL             GPIO_LEVEL_LOW     // GPIO_LEVEL_HIGH | GPIO_LEVEL_LOW
+#define BLEWIFI_CTRL_BUTTON_PRESS_LEVEL             GPIO_LEVEL_LOW          // GPIO_LEVEL_HIGH | GPIO_LEVEL_LOW
 #define BLEWIFI_CTRL_BUTTON_TIMEOUT_DEBOUNCE_TIME   (30)      // 30 ms
 #define BLEWIFI_CTRL_BUTTON_PRESS_TIME              (5000)    // ms
 #define BLEWIFI_CTRL_BUTTON_RELEASE_COUNT_TIME      (800)     // ms
 
 /* SMART SLEEP WAKEUP Config */
 #define BLEWIFI_CTRL_WAKEUP_IO_EN                       (0)
-#define BLEWIFI_CTRL_WAKEUP_IO_PORT                     GPIO_IDX_17
-#define BLEWIFI_CTRL_WAKEUP_IO_LEVEL                    GPIO_LEVEL_HIGH     // GPIO_LEVEL_HIGH | GPIO_LEVEL_LOW
+#define BLEWIFI_CTRL_WAKEUP_IO_PORT                     GPIO_IDX_04
+#define BLEWIFI_CTRL_WAKEUP_IO_LEVEL                    GPIO_LEVEL_LOW      // GPIO_LEVEL_HIGH | GPIO_LEVEL_LOW
 #define BLEWIFI_CTRL_WAKEUP_IO_TIMEOUT_DEBOUNCE_TIME    (30)      // 30 ms
 
 #endif /* __BLEWIFI_CONFIGURATION_H__ */
