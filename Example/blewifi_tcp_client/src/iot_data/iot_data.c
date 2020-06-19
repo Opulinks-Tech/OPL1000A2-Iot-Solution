@@ -104,12 +104,13 @@ static void Iot_Data_TxTaskEvtHandler_DataPost(uint32_t evt_type, void *data, in
                     if ((g_tcp_handle != (uintptr_t)-1) && (g_tcp_tx_ID == g_tcp_hdl_ID))
                     {
                         ret = tcp_Disconnect(g_tcp_handle);
-                        if (ret == 0)
+                        if (ret < 0)
                         {
-                            g_tcp_handle = (uintptr_t)-1;
-                            g_tcp_hdl_ID = -1;
-                            g_tcp_tx_ID = -1;
+                            printf("tcp dis connect 2 (ret=%d)\n", ret);
                         }
+                        g_tcp_handle = (uintptr_t)-1;
+                        g_tcp_hdl_ID = -1;
+                        g_tcp_tx_ID = -1;
                         osSemaphoreRelease(g_tTcpSemaphoreId);
                         Iot_Data_TxTask_MsgSend(IOT_DATA_TX_MSG_EST_TCP_CONNECTION, NULL, 0);
                         BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_TCP_CONN, false);

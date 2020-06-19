@@ -300,6 +300,7 @@ void BleWifi_Wifi_ResetRecord(void)
 {
     uint8_t ubResetResult = 0;
     
+    printf("%s(%d) : do wifi_auto_connect_reset!!!\n", __func__, __LINE__);
     ubResetResult = wifi_auto_connect_reset();
     BleWifi_Ble_SendResponse(BLEWIFI_RSP_RESET, ubResetResult);
     
@@ -635,7 +636,20 @@ static int BleWifi_Wifi_EventHandler_Disconnected(wifi_event_id_t event_id, void
     
     printf("\r\nWi-Fi Disconnected , reason %d\r\n", reason);
     g_wifi_disconnectedDoneForAppDoWIFIScan = 1;
-    BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND, NULL, 0);
+
+    if ( reason == 255 ) {
+        /* Reset the beacon time (ms) */
+        g_ulBleWifi_Wifi_BeaconTime = 100;
+
+        /* DTIM */
+        BleWifi_Wifi_SetDTIM(0);
+
+        BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_WIFI_RESET_DEFAULT_IND, NULL, 0);
+    }
+    else
+    {
+        BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND, NULL, 0);
+    }
 
     return 0;
 }

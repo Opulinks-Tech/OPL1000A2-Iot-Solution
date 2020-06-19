@@ -43,6 +43,7 @@ typedef enum blewifi_ctrl_msg_type
 
     /* Wi-Fi Trigger */
     BLEWIFI_CTRL_MSG_WIFI_INIT_COMPLETE = 0x80, //Wi-Fi report status
+    BLEWIFI_CTRL_MSG_WIFI_RESET_DEFAULT_IND,    //Wi-Fi report status
     BLEWIFI_CTRL_MSG_WIFI_SCAN_DONE_IND,        //Wi-Fi report status
     BLEWIFI_CTRL_MSG_WIFI_CONNECTION_IND,       //Wi-Fi report status
     BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND,    //Wi-Fi report status
