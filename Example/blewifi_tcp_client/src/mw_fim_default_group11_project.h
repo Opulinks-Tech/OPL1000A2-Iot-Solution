@@ -48,8 +48,6 @@ typedef enum
 Declaration of data structure
 ******************************/
 // Sec 3: structure, uniou, enum, linked list
-// Group Version
-#define MW_FIM_VER11_PROJECT            0x08    // 0x00 ~ 0xFF
 
 
 /********************************************

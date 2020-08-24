@@ -51,6 +51,8 @@ typedef struct {
 
 blewifi_rx_packet_t g_rx_packet = {0};
 
+extern EventGroupHandle_t g_tAppCtrlEventGroup;
+
 static void BleWifi_Ble_ProtocolHandler_Scan(uint16_t type, uint8_t *data, int len);
 static void BleWifi_Ble_ProtocolHandler_Connect(uint16_t type, uint8_t *data, int len);
 static void BleWifi_Ble_ProtocolHandler_Disconnect(uint16_t type, uint8_t *data, int len);
@@ -115,7 +117,7 @@ static T_BleWifi_Ble_ProtocolHandlerTbl g_tBleProtocolHandlerTbl[] =
     {BLEWIFI_REQ_MP_CAL_TMPR,               BleWifi_Ble_ProtocolHandler_MpCalTmpr},
     {BLEWIFI_REQ_MP_SYS_MODE_WRITE,         BleWifi_Ble_ProtocolHandler_MpSysModeWrite},
     {BLEWIFI_REQ_MP_SYS_MODE_READ,          BleWifi_Ble_ProtocolHandler_MpSysModeRead},
-    
+
     {BLEWIFI_REQ_ENG_SYS_RESET,             BleWifi_Ble_ProtocolHandler_EngSysReset},
     {BLEWIFI_REQ_ENG_WIFI_MAC_WRITE,        BleWifi_Ble_ProtocolHandler_EngWifiMacWrite},
     {BLEWIFI_REQ_ENG_WIFI_MAC_READ,         BleWifi_Ble_ProtocolHandler_EngWifiMacRead},
@@ -124,7 +126,7 @@ static T_BleWifi_Ble_ProtocolHandlerTbl g_tBleProtocolHandlerTbl[] =
     {BLEWIFI_REQ_ENG_BLE_CMD,               BleWifi_Ble_ProtocolHandler_EngBleCmd},
     {BLEWIFI_REQ_ENG_MAC_SRC_WRITE,         BleWifi_Ble_ProtocolHandler_EngMacSrcWrite},
     {BLEWIFI_REQ_ENG_MAC_SRC_READ,          BleWifi_Ble_ProtocolHandler_EngMacSrcRead},
-    
+
     {0xFFFFFFFF,                            NULL}
 };
 
@@ -177,10 +179,10 @@ static void BleWifi_HandleOtaVersionReq(uint8_t *data, int len)
 	uint16_t cid;
 	uint16_t fid;
 	uint8_t state = MwOta_VersionGet(&pid, &cid, &fid);
-    
+
 	BLEWIFI_INFO("BLEWIFI: BLEWIFI_REQ_OTA_VERSION\r\n");
 
-	if (state != MW_OTA_OK) 
+	if (state != MW_OTA_OK)
 		BleWifi_OtaSendVersionRsp(BLEWIFI_OTA_ERR_HW_FAILURE, 0, 0, 0);
 	else
 		BleWifi_OtaSendVersionRsp(BLEWIFI_OTA_SUCCESS, pid, cid, fid);
@@ -234,20 +236,20 @@ static void BleWifi_HandleOtaUpgradeReq(uint8_t *data, int len)
 	if (ota)
 	{
 		T_MwOtaFlashHeader *ota_hdr= (T_MwOtaFlashHeader*) &data[2];
-		
+
 		ota->pkt_idx = 0;
-		ota->idx     = 0;		
+		ota->idx     = 0;
         ota->rx_pkt  = *(uint16_t *)&data[0];
         ota->proj_id = ota_hdr->uwProjectId;
         ota->chip_id = ota_hdr->uwChipId;
         ota->fw_id   = ota_hdr->uwFirmwareId;
         ota->total   = ota_hdr->ulImageSize;
-        ota->chksum  = ota_hdr->ulImageSum;		
+        ota->chksum  = ota_hdr->ulImageSum;
 		ota->curr 	 = 0;
 
 		state = BleWifi_MwOtaPrepare(ota->proj_id, ota->chip_id, ota->fw_id, ota->total, ota->chksum);
 
-        if (state == MW_OTA_OK) 
+        if (state == MW_OTA_OK)
         {
 	        BleWifi_OtaSendUpgradeRsp(BLEWIFI_OTA_SUCCESS);
 	        gTheOta = ota;
@@ -417,12 +419,12 @@ void BleWifi_Wifi_OtaTrigRsp(uint8_t status)
     BleWifi_Ble_DataSendEncap(BLEWIFI_RSP_HTTP_OTA_TRIG, &status, 1);
 }
 
-void BleWifi_Wifi_OtaDeviceVersionReq(void)        
+void BleWifi_Wifi_OtaDeviceVersionReq(void)
 {
     blewifi_ctrl_http_ota_msg_send(BLEWIFI_CTRL_HTTP_OTA_MSG_DEVICE_VERSION, NULL, 0);
 }
 
-void BleWifi_Wifi_OtaDeviceVersionRsp(uint16_t fid)        
+void BleWifi_Wifi_OtaDeviceVersionRsp(uint16_t fid)
 {
     uint8_t data[2];
     uint8_t *p = (uint8_t *)data;
@@ -478,7 +480,7 @@ static void BleWifi_MP_CalTmpr(uint8_t *data, int len)
 static void BleWifi_MP_SysModeWrite(uint8_t *data, int len)
 {
     T_MwFim_SysMode tSysMode;
-    
+
     // set the settings of system mode
     tSysMode.ubSysMode = data[0];
     if (tSysMode.ubSysMode < MW_FIM_SYS_MODE_MAX)
@@ -522,57 +524,57 @@ static void BleWifi_Eng_MacSrcWrite(uint8_t *data, int len)
     uint8_t sta_type, ble_type;
     int ret=0;
     u8 ret_st = true;
-    
+
     sta_type = data[0];
     ble_type = data[1];
 
     BLEWIFI_INFO("Enter BleWifi_Eng_MacSrcWrite: WiFi MAC Src=%d, BLE MAC Src=%d\n", sta_type, ble_type);
-    
+
     ret = mac_addr_set_config_source(MAC_IFACE_WIFI_STA, (mac_source_type_t)sta_type);
     if (ret != 0) {
         ret_st = false;
         goto done;
     }
-    
+
     ret = mac_addr_set_config_source(MAC_IFACE_BLE, (mac_source_type_t)ble_type);
     if (ret != 0) {
         ret_st = false;
         goto done;
     }
-    
-    
+
+
 done:
     if (ret_st)
         BleWifi_Ble_SendResponse(BLEWIFI_RSP_ENG_MAC_SRC_WRITE, 0);
-    else 
+    else
         BleWifi_Ble_SendResponse(BLEWIFI_RSP_ENG_MAC_SRC_WRITE, 1);
-    
+
 }
 
 static void BleWifi_Eng_MacSrcRead(uint8_t *data, int len)
 {
-    
+
     uint8_t sta_type, ble_type;
-    
+
     uint8_t MacSrc[2]={0};
     int ret=0;
     u8 ret_st = true;
-    
+
     ret = mac_addr_get_config_source(MAC_IFACE_WIFI_STA, (mac_source_type_t *)&sta_type);
     if (ret != 0) {
         ret_st = false;
         goto done;
     }
-    
+
     ret = mac_addr_get_config_source(MAC_IFACE_BLE, (mac_source_type_t *)&ble_type);
     if (ret != 0) {
         ret_st = false;
         goto done;
     }
-    
+
     MacSrc[0] = sta_type;
     MacSrc[1] = ble_type;
-    
+
     BLEWIFI_INFO("WiFi MAC Src=%d, BLE MAC Src=%d\n", MacSrc[0], MacSrc[1]);
 
 done:
@@ -580,15 +582,15 @@ done:
         BleWifi_Ble_DataSendEncap(BLEWIFI_RSP_ENG_MAC_SRC_READ, MacSrc, 2);
     else{
         BleWifi_Ble_SendResponse(BLEWIFI_RSP_ENG_MAC_SRC_READ, 1);
-    }        
-    
-    
+    }
+
+
 }
 
 static void BleWifi_Ble_ProtocolHandler_Scan(uint16_t type, uint8_t *data, int len)
 {
     BLEWIFI_INFO("BLEWIFI: Recv BLEWIFI_REQ_SCAN \r\n");
-    if (true != BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP))  //if not get IP , state always is disconnected 
+    if (true != BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP))  //if not get IP , state always is disconnected
     {
         printf(" Postpone Do WIFI Scan Due to Auto Connect running IND \n");
         g_wifi_disconnectedDoneForAppDoWIFIScan = 0;
@@ -596,7 +598,7 @@ static void BleWifi_Ble_ProtocolHandler_Scan(uint16_t type, uint8_t *data, int l
         int count = 0;
         while(count < 100)
         {
-            if(g_wifi_disconnectedDoneForAppDoWIFIScan == 1) 
+            if(g_wifi_disconnectedDoneForAppDoWIFIScan == 1)
             {
                 break;
             }
@@ -607,7 +609,7 @@ static void BleWifi_Ble_ProtocolHandler_Scan(uint16_t type, uint8_t *data, int l
             }
         }// wait event back
         printf(" Postpone Do WIFI Scan Due to Auto Connect running END \n");
-    }   
+    }
     BleWifi_Wifi_DoScan(data, len);
 }
 

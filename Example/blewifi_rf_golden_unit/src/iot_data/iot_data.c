@@ -75,15 +75,15 @@ void Iot_Data_TxTask(void *args)
     while (1)
     {
         #if 1
-        if (true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP, 0xFFFFFFFF))
+        if (true == BleWifi_EventStatusWait(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP , 0xFFFFFFFF))
         {
             // init behavior
-            BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, true);
+            BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_IOT_INIT , true);
             break;
         }
         // !!! if the IoT initialization is executed once by Tx or Rx, we could wait the behavior finish.
         #else
-        if (true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, 0xFFFFFFFF))
+        if (true == BleWifi_EventStatusWait(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_IOT_INIT , 0xFFFFFFFF))
         {
             break;
         }
@@ -186,15 +186,15 @@ void Iot_Data_RxTask(void *args)
     while (1)
     {
         #if 1
-        if (true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP, 0xFFFFFFFF))
+        if (true == BleWifi_EventStatusWait(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP , 0xFFFFFFFF))
         {
             // init behavior
-            BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, true);
+            BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_IOT_INIT , true);
             break;
         }
         // !!! if the IoT initialization is executed once by Tx or Rx, we could wait the behavior finish.
         #else
-        if (true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, 0xFFFFFFFF))
+        if (true == BleWifi_EventStatusWait(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_IOT_INIT , 0xFFFFFFFF))
         {
             break;
         }
@@ -204,7 +204,7 @@ void Iot_Data_RxTask(void *args)
     // do the rx behavior
     while (1)
     {
-        if (true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP, 0xFFFFFFFF))
+        if (true == BleWifi_EventStatusWait(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP , 0xFFFFFFFF))
         {
             // rx behavior
             osDelay(10000); // if do nothing for rx behavior, the delay must be exist.

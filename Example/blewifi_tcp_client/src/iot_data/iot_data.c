@@ -71,9 +71,9 @@ static void Iot_Data_TxTaskEvtHandler_DataPost(uint32_t evt_type, void *data, in
     // get the IoT data here, or the data are from *data and len parameters.
     // send the data to cloud
 
-    if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP))
+    if (true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP))
     {
-        if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_TCP_CONN))
+        if(true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_TCP_CONN))
         {
             // data from ring buffer
             IoT_Properity_t IoT_Properity;
@@ -113,7 +113,7 @@ static void Iot_Data_TxTaskEvtHandler_DataPost(uint32_t evt_type, void *data, in
                         g_tcp_tx_ID = -1;
                         osSemaphoreRelease(g_tTcpSemaphoreId);
                         Iot_Data_TxTask_MsgSend(IOT_DATA_TX_MSG_EST_TCP_CONNECTION, NULL, 0);
-                        BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_TCP_CONN, false);
+                        BleWifi_EventStatusSet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_TCP_CONN, false);
                     }
                     else
                     {
@@ -139,9 +139,9 @@ static void Iot_Data_TxTaskEvtHandler_Est_Tcp_Connection(uint32_t evt_type, void
 {
     printf("Iot_Data_TxTaskEvtHandler_Est_Tcp_Connection\n");
 
-    if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP))
+    if (true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP))
     {
-        if(false == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_TCP_CONN))
+        if(false == BleWifi_EventStatusGet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_TCP_CONN))
         {
             osSemaphoreWait(g_tTcpSemaphoreId, osWaitForever);
             BleWifi_Wifi_SetDTIM(0);
@@ -161,7 +161,7 @@ static void Iot_Data_TxTaskEvtHandler_Est_Tcp_Connection(uint32_t evt_type, void
 
                 printf("connect_tcp Success\n");
                 BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet());
-                BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_TCP_CONN, true);
+                BleWifi_EventStatusSet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_TCP_CONN, true);
 #if (TCP_HEARTBEAT_TIMER_EN == 1)
                 osTimerStop(g_tTcpHeartBeatTimerId);
                 osTimerStart(g_tTcpHeartBeatTimerId, TCP_HEARTBEAT_TIMEOUT);
@@ -176,9 +176,9 @@ static void Iot_Data_TxTaskEvtHandler_Send_Heartbeat(uint32_t evt_type, void *da
 {
     BLEWIFI_INFO("Iot_Data_TxTaskEvtHandler_Send_HeartBeat - Send Heartbeat\n");
 
-    if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP))
+    if (true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP))
     {
-        if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_TCP_CONN))
+        if (true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_TCP_CONN))
         {
 #if 0
             int ret;
@@ -243,15 +243,15 @@ void Iot_Data_TxTask(void *args)
     while (1)
     {
         #if 1
-        if (true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP, 0xFFFFFFFF))
+        if (true == BleWifi_EventStatusWait(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP , 0xFFFFFFFF))
         {
             // init behavior
-            BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, true);
+            BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_IOT_INIT , true);
             break;
         }
         // !!! if the IoT initialization is executed once by Tx or Rx, we could wait the behavior finish.
         #else
-        if (true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, 0xFFFFFFFF))
+        if (true == BleWifi_EventStatusWait(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_IOT_INIT , 0xFFFFFFFF))
         {
             break;
         }
@@ -357,15 +357,15 @@ void Iot_Data_RxTask(void *args)
     while (0)
     {
         #if 1
-        if (true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP, 0xFFFFFFFF))
+        if (true == BleWifi_EventStatusWait(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP , 0xFFFFFFFF))
         {
             // init behavior
-            BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, true);
+            BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_IOT_INIT , true);
             break;
         }
         // !!! if the IoT initialization is executed once by Tx or Rx, we could wait the behavior finish.
         #else
-        if (true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, 0xFFFFFFFF))
+        if (true == BleWifi_EventStatusWait(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_IOT_INIT , 0xFFFFFFFF))
         {
             break;
         }
@@ -375,9 +375,9 @@ void Iot_Data_RxTask(void *args)
     // do the rx behavior
     while (1)
     {
-        if (true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP, 0xFFFFFFFF))
+        if (true == BleWifi_EventStatusWait(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP , 0xFFFFFFFF))
         {
-            if(true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_TCP_CONN, 0xFFFFFFFF))
+            if(true == BleWifi_EventStatusWait(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_TCP_CONN, 0xFFFFFFFF))
             {
                 memset(szBuf, 0, sizeof(szBuf));
 
@@ -440,7 +440,7 @@ void Iot_Data_RxTask(void *args)
                         g_tcp_rx_ID = -1;
                         osSemaphoreRelease(g_tTcpSemaphoreId);
 
-                        BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_TCP_CONN, false);
+                        BleWifi_EventStatusSet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_TCP_CONN, false);
                         Iot_Data_TxTask_MsgSend(IOT_DATA_TX_MSG_EST_TCP_CONNECTION, NULL, 0);
                     }
                     else

@@ -22,6 +22,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "cmsis_os.h"
+#include "event_groups.h"
 #include "blewifi_configuration.h"
 #include "mw_fim_default_group11_project.h"
 
@@ -60,7 +62,7 @@ typedef enum blewifi_ctrl_msg_type
     BLEWIFI_CTRL_MSG_NETWORKING_START,          //Networking Start
     BLEWIFI_CTRL_MSG_NETWORKING_STOP,           //Networking Stop
     BLEWIFI_CTRL_MSG_NETWORKING_PARAM_CHANGE,   //Networking Interval Time Change
-#if (BLEWIFI_CTRL_BUTTON_SENSOR_EN == 1)   
+#if (BLEWIFI_CTRL_BUTTON_SENSOR_EN == 1)
     BLEWIFI_CTRL_MSG_BUTTON_STATE_CHANGE,           //Button Stage Change
     BLEWIFI_CTRL_MSG_BUTTON_DEBOUNCE_TIMEOUT,       //Button Debounce Time Out
     BLEWIFI_CTRL_MSG_BUTTON_RELEASE_TIMEOUT,        //Button Release Time Out
@@ -116,9 +118,6 @@ typedef struct
 
 void BleWifi_Ctrl_SysModeSet(uint8_t mode);
 uint8_t BleWifi_Ctrl_SysModeGet(void);
-void BleWifi_Ctrl_EventStatusSet(uint32_t dwEventBit, uint8_t status);
-uint8_t BleWifi_Ctrl_EventStatusGet(uint32_t dwEventBit);
-uint8_t BleWifi_Ctrl_EventStatusWait(uint32_t dwEventBit, uint32_t millisec);
 void BleWifi_Ctrl_DtimTimeSet(uint32_t value);
 uint32_t BleWifi_Ctrl_DtimTimeGet(void);
 int BleWifi_Ctrl_MsgSend(int msg_type, uint8_t *data, int data_len);
@@ -126,7 +125,7 @@ void BleWifi_Ctrl_Init(void);
 
 void BleWifi_Ctrl_NetworkingStart(uint32_t u32ExpireTime);
 void BleWifi_Ctrl_NetworkingStop(void);
-#if (BLEWIFI_CTRL_BUTTON_SENSOR_EN == 1)   
+#if (BLEWIFI_CTRL_BUTTON_SENSOR_EN == 1)
 void BleWifi_Ctrl_ButtonReleaseHandle(uint8_t u8ReleaseCount);
 #endif
 void BleWifi_Ctrl_NetworkingParamChange(uint32_t u32IntervalTime);
@@ -138,6 +137,8 @@ void BleWifi_Ctrl_NetworkingParamChange(uint32_t u32IntervalTime);
 int BleWifi_Ctrl_BleCastWithExpire(uint8_t u8BleCastEnable, uint32_t u32ExpireTime);
 int BleWifi_Ctrl_BleCastParamSet(uint32_t u32CastInteval);
 #endif
+
+extern EventGroupHandle_t g_tAppCtrlEventGroup;
 
 #endif /* __BLEWIFI_CTRL_H__ */
 

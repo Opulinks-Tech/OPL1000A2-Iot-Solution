@@ -14,6 +14,8 @@
 
 #include "msg.h"
 #include "blewifi_configuration.h"
+#include "cmsis_os.h"
+#include "event_groups.h"
 #if (SNTP_FUNCTION_EN == 1)
 #include <time.h>
 #endif
@@ -66,7 +68,7 @@ typedef struct {
 
 #define SNTP_SEC_1970           (2208988800)                                    /* 1970 - 1900 in seconds */
 #define SNTP_SEC_2019           (3755260800)                                    /* 2019 - 1900 in seconds */
-#define SNTP_CONVERT_TIME(s)    ((s) - SNTP_SEC_1970 + 3600 * SNTP_TIME_ZONE)   /* Current time - 1970 + time zone */ 
+#define SNTP_CONVERT_TIME(s)    ((s) - SNTP_SEC_1970 + 3600 * SNTP_TIME_ZONE)   /* Current time - 1970 + time zone */
 
 /*
 tm Data Structure
@@ -94,5 +96,9 @@ extern uint32_t g_ulSntpSecondInit;      // GMT Time
 #endif
 
 void BleWifi_RFPowerSetting(uint8_t level);
+uint8_t BleWifi_EventCreate(EventGroupHandle_t *tEventGroup);
+void BleWifi_EventStatusSet(EventGroupHandle_t tEventGroup , uint32_t dwEventBit , uint8_t status);
+uint8_t BleWifi_EventStatusGet(EventGroupHandle_t tEventGroup , uint32_t dwEventBit);
+uint8_t BleWifi_EventStatusWait(EventGroupHandle_t tEventGroup , uint32_t dwEventBit , uint32_t millisec);
 
 #endif  // end of __BLEWIFI_COMMON_H__

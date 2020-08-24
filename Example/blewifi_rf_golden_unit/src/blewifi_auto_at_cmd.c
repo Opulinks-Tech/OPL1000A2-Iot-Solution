@@ -17,7 +17,7 @@
 #include "blewifi_ctrl.h"
 #include "blewifi_ctrl_http_ota.h"
 #include "sys_common_api.h"
-#include "mw_fim_default_group14_project.h"
+#include "mw_fim_default_group08_project.h"
 #include "app_at_cmd.h"
 #include "cmsis_os.h"
 #include "at_cmd_common_patch.h"
@@ -28,7 +28,7 @@
 
 osThreadId g_tAppIotDataATCmdTaskID;
 
-extern volatile T_MwFim_GP14_Boot_Status g_tBootStatus;
+extern volatile T_MwFim_GP08_Boot_Status g_tBootStatus;
 
 void ExecATCommand(void *args)
 {
@@ -39,7 +39,7 @@ void ExecATCommand(void *args)
     // clear boot cnt
     osDelay(5000);
     g_tBootStatus.u8Cnt = 0;
-    if (MW_FIM_OK != MwFim_FileWrite(MW_FIM_IDX_GP14_PROJECT_BOOT_STATUS, 0, MW_FIM_GP14_BOOT_STATUS_SIZE, (uint8_t *)&g_tBootStatus))
+    if (MW_FIM_OK != MwFim_FileWrite(MW_FIM_IDX_GP08_PROJECT_BOOT_STATUS, 0, MW_FIM_GP08_BOOT_STATUS_SIZE, (uint8_t *)&g_tBootStatus))
     {
         BLEWIFI_ERROR("[%s][%d] MwFim_FileWrite fail\n", __func__, __LINE__);
     }

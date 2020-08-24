@@ -28,29 +28,29 @@
 #include "ps_public.h"
 #include "mw_fim_default_group03.h"
 #include "mw_fim_default_group03_patch.h"
+#include "mw_fim_default_group08_project.h"
 #include "mw_fim_default_group11_project.h"
-#include "mw_fim_default_group14_project.h"
 #include "app_at_cmd.h"
 #include "blewifi_auto_at_cmd.h"
 
 blewifi_ota_t *gTheOta = 0;
 
-volatile T_MwFim_GP14_Boot_Status g_tBootStatus = {0};
+volatile T_MwFim_GP08_Boot_Status g_tBootStatus = {0};
 
 void BleWifi_BootCntUpdate(void)
 {
-    if (MW_FIM_OK != MwFim_FileRead(MW_FIM_IDX_GP14_PROJECT_BOOT_STATUS, 0, MW_FIM_GP14_BOOT_STATUS_SIZE, (uint8_t *)&g_tBootStatus))
+    if (MW_FIM_OK != MwFim_FileRead(MW_FIM_IDX_GP08_PROJECT_BOOT_STATUS, 0, MW_FIM_GP08_BOOT_STATUS_SIZE, (uint8_t *)&g_tBootStatus))
     {
         BLEWIFI_ERROR("[%s][%d] MwFim_FileRead fail\n", __func__, __LINE__);
         // if fail, get the default value
-        memcpy((void *)&g_tBootStatus, &g_tMwFimDefaultGp14BootStatus, MW_FIM_GP14_BOOT_STATUS_SIZE);
+        memcpy((void *)&g_tBootStatus, &g_tMwFimDefaultGp08BootStatus, MW_FIM_GP08_BOOT_STATUS_SIZE);
     }
     BLEWIFI_INFO("[%s][%d] read boot_cnt[%u]\n", __func__, __LINE__, g_tBootStatus.u8Cnt);
     
     if(g_tBootStatus.u8Cnt < BLEWIFI_CTRL_BOOT_CNT_FOR_RESET)
     {
         g_tBootStatus.u8Cnt += 1;
-        if (MW_FIM_OK != MwFim_FileWrite(MW_FIM_IDX_GP14_PROJECT_BOOT_STATUS, 0, MW_FIM_GP14_BOOT_STATUS_SIZE, (uint8_t *)&g_tBootStatus))
+        if (MW_FIM_OK != MwFim_FileWrite(MW_FIM_IDX_GP08_PROJECT_BOOT_STATUS, 0, MW_FIM_GP08_BOOT_STATUS_SIZE, (uint8_t *)&g_tBootStatus))
         {
             BLEWIFI_ERROR("[%s][%d] MwFim_FileWrite fail\n", __func__, __LINE__);
         }
@@ -81,7 +81,7 @@ void BleWifiAppInit(void)
     {
         //clear boot cnt
         g_tBootStatus.u8Cnt = 0;
-        if (MW_FIM_OK != MwFim_FileWrite(MW_FIM_IDX_GP14_PROJECT_BOOT_STATUS, 0, MW_FIM_GP14_BOOT_STATUS_SIZE, (uint8_t *)&g_tBootStatus))
+        if (MW_FIM_OK != MwFim_FileWrite(MW_FIM_IDX_GP08_PROJECT_BOOT_STATUS, 0, MW_FIM_GP08_BOOT_STATUS_SIZE, (uint8_t *)&g_tBootStatus))
         {
             BLEWIFI_ERROR("[%s][%d] MwFim_FileWrite fail\n", __func__, __LINE__);
         }

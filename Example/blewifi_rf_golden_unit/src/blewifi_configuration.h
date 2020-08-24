@@ -176,8 +176,6 @@ WIFI Set TCA mode enable
 #define BLEWIFI_CTRL_WAKEUP_IO_LEVEL                    GPIO_LEVEL_LOW      // GPIO_LEVEL_HIGH | GPIO_LEVEL_LOW
 #define BLEWIFI_CTRL_WAKEUP_IO_TIMEOUT_DEBOUNCE_TIME    (30)      // 30 ms
 
-#define MW_FIM_VER14_PROJECT                         (0x02)    // 0x00 ~ 0xFF
-
 #define BLEWIFI_CTRL_BOOT_CNT_FOR_RESET              (3)
 
 #endif /* __BLEWIFI_CONFIGURATION_H__ */

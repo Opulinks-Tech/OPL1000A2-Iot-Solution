@@ -52,14 +52,14 @@ uint32_t BleWifi_CurrentSystemTimeGet(void)
     uint32_t ulTick;
     int32_t  dwOverflow;
     uint32_t ulsecond;
-    
+
     uint32_t ulSecPerTickOverflow;
     uint32_t ulSecModTickOverflow;
     uint32_t ulMsModTickOverflow;
-    
+
     uint32_t ulSecPerTick;
     uint32_t ulSecModTick;
-    
+
     osKernelSysTickEx(&ulTick, &dwOverflow);
 
     // the total time of TickOverflow is 4294967295 + 1 ms
@@ -159,10 +159,10 @@ int BleWifi_SntpInit(void)
             }
 
             if ((nRet = read(sockfd, (char*) &sntp_h, sizeof(sntp_h)) ) < 0)
-            {           
+            {
                 printf("[SNTP] recvfrom failed ret is %d .\n",nRet);
                 printf(" [SNTP] getsockopt return errinfo = %d", error);
-                
+
                 if (errno == EWOULDBLOCK)
                 {
                     printf("sntp read timeout \n");
@@ -226,13 +226,13 @@ time_t BleWifi_SntpGetRawData(void)
     ulTmpSystemSecond = BleWifi_CurrentSystemTimeGet();
     ulDeltaSystemSecond =  (ulTmpSystemSecond - g_ulSystemSecondInit);
     rawtime = SNTP_CONVERT_TIME(g_ulSntpSecondInit + ulDeltaSystemSecond);
-    
+
     return rawtime;
 }
 
 #endif
 
-/* 
+/*
 Set RF power (0x00 - 0xFF)
 */
 void BleWifi_RFPowerSetting(uint8_t level)
@@ -243,5 +243,87 @@ void BleWifi_RFPowerSetting(uint8_t level)
     tCfg.u8HighPwrStatus = level;
     ret = sys_cfg_rf_init_patch(&tCfg);
     printf("RF Power Settings is = %s \n", (ret == 0 ? "successful" : "false"));
+}
+
+uint8_t BleWifi_EventCreate(EventGroupHandle_t *tEventGroup)
+{
+    if(tEventGroup == NULL)
+    {
+        return false;
+    }
+    *tEventGroup = xEventGroupCreate();
+
+    if(*tEventGroup == NULL)
+    {
+        BLEWIFI_ERROR("task create event group fail \r\n");
+        return false;
+    }
+
+    return true;
+}
+
+void BleWifi_EventStatusSet(EventGroupHandle_t tEventGroup , uint32_t dwEventBit , uint8_t status)
+{
+// ISR mode is not supported.
+#if 0
+    BaseType_t xHigherPriorityTaskWoken, xResult;
+
+    // check if it is ISR mode or not
+    if (0 != __get_IPSR())
+    {
+        if (true == status)
+        {
+            // xHigherPriorityTaskWoken must be initialised to pdFALSE.
+    		xHigherPriorityTaskWoken = pdFALSE;
+
+            // Set bit in xEventGroup.
+            xResult = xEventGroupSetBitsFromISR(tEventGroup , dwEventBit, &xHigherPriorityTaskWoken);
+            if( xResult == pdPASS )
+    		{
+    			// If xHigherPriorityTaskWoken is now set to pdTRUE then a context
+    			// switch should be requested.  The macro used is port specific and
+    			// will be either portYIELD_FROM_ISR() or portEND_SWITCHING_ISR() -
+    			// refer to the documentation page for the port being used.
+    			portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    		}
+        }
+        else
+            xEventGroupClearBitsFromISR(tEventGroup , dwEventBit);
+    }
+    // Taske mode
+    else
+#endif
+    {
+        if (true == status)
+            xEventGroupSetBits(tEventGroup, dwEventBit);
+        else
+            xEventGroupClearBits(tEventGroup, dwEventBit);
+    }
+}
+
+uint8_t BleWifi_EventStatusGet(EventGroupHandle_t tEventGroup , uint32_t dwEventBit)
+{
+    EventBits_t tRetBit;
+
+    tRetBit = xEventGroupGetBits(tEventGroup);
+    if (dwEventBit == (dwEventBit & tRetBit))
+        return true;
+
+    return false;
+}
+
+uint8_t BleWifi_EventStatusWait(EventGroupHandle_t tEventGroup , uint32_t dwEventBit , uint32_t millisec)
+{
+    EventBits_t tRetBit;
+
+    tRetBit = xEventGroupWaitBits(tEventGroup,
+                                  dwEventBit,
+                                  pdFALSE,
+                                  pdTRUE,
+                                  millisec);
+    if (dwEventBit == (dwEventBit & tRetBit))
+        return true;
+
+    return false;
 }
 

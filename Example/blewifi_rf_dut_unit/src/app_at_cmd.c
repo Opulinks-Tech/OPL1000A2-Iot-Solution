@@ -32,6 +32,7 @@
 #include "svn_info.h"  //execute "pre-build.bat" to generate "svn_info.h"
 #include "mw_ota.h"
 #include "mw_ota_def.h"
+#include "blewifi_common.h"
 
 //#define AT_LOG                      msg_print_uart1
 #define AT_LOG(...)
@@ -44,7 +45,7 @@ extern RET_DATA int8_t g_bMwOtaImageIdx;
 extern RET_DATA T_Hal_Flash_AddrRead g_tMwOtaReadFunc;
 extern RET_DATA T_Hal_Flash_4KSectorAddrErase g_tMwOtaEraseFunc;
 extern RET_DATA T_MwOtaLayoutInfo g_tMwOtaLayoutInfo;          // the layout information
-
+extern EventGroupHandle_t g_tAppCtrlEventGroup;
 
 typedef struct
 {
@@ -716,13 +717,13 @@ int app_at_cmd_sys_ble_sts(char *buf, int len, int mode)
     {
         case AT_CMD_MODE_READ:
         {
-            if ( true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_BLE_CONNECTED)) {
+            if ( true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_BLE_CONNECTED)) {
                 msg_print_uart1("+BLESTS:CONNECTED\n\n");
             }
-            else if ( true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_BLE_ADVTISING)) {
+            else if ( true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_BLE_ADVTISING)) {
                 msg_print_uart1("+BLESTS:ADVERTISING\n\n");
             }
-            else if ( true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_BLE_INIT_DONE)) {
+            else if ( true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_BLE_INIT_DONE)) {
                 msg_print_uart1("+BLESTS:IDLE\n\n");
             }
             else {
@@ -756,19 +757,19 @@ int app_at_cmd_sys_wifi_sts(char *buf, int len, int mode)
     {
         case AT_CMD_MODE_READ:
         {
-            if ( true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WIFI_SCANNING) ) {
+            if ( true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_SCANNING) ) {
                 msg_print_uart1("+WIFISTS:SCANNING\n\n");
             }
-            else if ( true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP)) {
+            else if ( true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP)) {
                 msg_print_uart1("+WIFISTS:GOT IP\n\n");
             }
-            else if ( true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTED)) {
+            else if ( true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTED)) {
                 msg_print_uart1("+WIFISTS:CONNECTED\n\n");
             }
-            else if ( true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING) ) {
+            else if ( true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING) ) {
                 msg_print_uart1("+WIFISTS:CONNECTNG\n\n");
             }
-            else if ( true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WIFI_INIT_DONE)) {
+            else if ( true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_INIT_DONE)) {
                 msg_print_uart1("+WIFISTS:IDLE\n\n");
             }
             else {

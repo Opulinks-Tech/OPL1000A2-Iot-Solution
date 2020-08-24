@@ -56,8 +56,9 @@ Head Block of The File
 
 #include "blewifi_app.h"
 #include "blewifi_configuration.h"
+#include "mw_fim_default_version_project.h"
+#include "mw_fim_default_group08_project.h"
 #include "mw_fim_default_group11_project.h"
-#include "mw_fim_default_group14_project.h"
 
 //#include "hal_wdt.h"
 // Sec 2: Constant Definitions, Imported Symbols, miscellaneous
@@ -222,12 +223,20 @@ static void Main_FlashLayoutUpdate(void)
     g_taMwFimZoneInfoTable[1].ulBaseAddr = 0x00090000;
     g_taMwFimZoneInfoTable[1].ulBlockNum = 9;
 
+    // Register FIM table
+    MwFim_GroupInfoUpdate(0, 8, (T_MwFimFileInfo *)g_taMwFimGroupTable08_project);
     MwFim_GroupInfoUpdate(1, 1, (T_MwFimFileInfo *)g_taMwFimGroupTable11_project);
+    
+    // Update FIM Version
+    MwFim_GroupVersionUpdate(0, 8, MW_FIM_VER08_PROJECT);
     MwFim_GroupVersionUpdate(1, 1, MW_FIM_VER11_PROJECT);
-
-    MwFim_GroupInfoUpdate(1, 4, (T_MwFimFileInfo *)g_taMwFimGroupTable14_project);
+    MwFim_GroupVersionUpdate(1, 2, MW_FIM_VER12_PROJECT);
+    MwFim_GroupVersionUpdate(1, 3, MW_FIM_VER13_PROJECT);
     MwFim_GroupVersionUpdate(1, 4, MW_FIM_VER14_PROJECT);
-
+    MwFim_GroupVersionUpdate(1, 5, MW_FIM_VER15_PROJECT);
+    MwFim_GroupVersionUpdate(1, 6, MW_FIM_VER16_PROJECT);
+    MwFim_GroupVersionUpdate(1, 7, MW_FIM_VER17_PROJECT);
+    MwFim_GroupVersionUpdate(1, 8, MW_FIM_VER18_PROJECT);
 #endif
 }
 
