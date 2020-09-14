@@ -393,6 +393,7 @@ static void BleWifi_Wifi_SendSingleScanReport(uint16_t apCount, blewifi_scan_inf
     for (int i = 0; i < apCount; ++i)
     {
         uint8_t len = ap_list[i].ssid_length;
+
         data_len = (pos - data);
 
         *pos++ = len;
@@ -496,8 +497,11 @@ int BleWifi_Wifi_SendScanReport(void)
     /* Send AP inforamtion individually */
     for (i = 0; i < apCount; ++i)
     {
-        BleWifi_Wifi_SendSingleScanReport(1, &blewifi_ap_list[i]);
-        osDelay(100);
+        if(blewifi_ap_list[i].ssid_length != 0)
+        {
+            BleWifi_Wifi_SendSingleScanReport(1, &blewifi_ap_list[i]);
+            osDelay(100);
+        }
     }
 
 err:
