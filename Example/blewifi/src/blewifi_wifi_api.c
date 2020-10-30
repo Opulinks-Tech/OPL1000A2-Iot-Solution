@@ -567,6 +567,7 @@ void BleWifi_Wifi_DoAutoConnect(void)
 
 void BleWifi_Wifi_ReqConnectRetry(void)
 {
+    BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING , true);
     wifi_connection_connect(&wifi_config_req_connect);
 }
 
@@ -630,6 +631,8 @@ static int BleWifi_Wifi_EventHandler_Connected(wifi_event_id_t event_id, void *d
     uint8_t reason = *((uint8_t*)data);
 
     printf("\r\nWi-Fi Connected, reason %d \r\n", reason);
+    g_wifi_disconnectedDoneForAppDoWIFIScan = 1;
+
     lwip_net_start(WIFI_MODE_STA);
     BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_WIFI_CONNECTION_IND, NULL, 0);
 
