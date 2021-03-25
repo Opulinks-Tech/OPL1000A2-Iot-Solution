@@ -145,10 +145,10 @@ void __Patch_EntryPoint(void)
     at_cmd_switch_uart1_dbguart = Main_AtUartDbgUartSwitch;
 
     // modify the heap size, from 0x43C000 to 0x44F000
-    g_ucaMemPartAddr = (uint8_t*) 0x42D000;
-    g_ulMemPartTotalSize = 0x22000;
+    g_ucaMemPartAddr = (uint8_t*) 0x42E000;
+    g_ulMemPartTotalSize = 0x21000;
 
-    Sys_SetUnsuedSramEndBound(0x42D000);
+    Sys_SetUnsuedSramEndBound(0x42E000);
 
     // application init
     Sys_AppInit = Main_AppInit_patch;

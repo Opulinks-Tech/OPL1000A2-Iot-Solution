@@ -42,7 +42,7 @@ Declaration of data structure
 /*
 FIM version
 */
-#define MW_FIM_VER11_PROJECT            0x06    // 0x00 ~ 0xFF
+#define MW_FIM_VER11_PROJECT            0x07    // 0x00 ~ 0xFF
 #define MW_FIM_VER12_PROJECT            0x07    // 0x00 ~ 0xFF
 #define MW_FIM_VER13_PROJECT            0x03    // 0x00 ~ 0xFF
 #define MW_FIM_VER14_PROJECT            0x02    // 0x00 ~ 0xFF

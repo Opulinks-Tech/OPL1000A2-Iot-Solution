@@ -39,11 +39,17 @@
 #include "mw_fim_default_group03_patch.h"
 #include "mw_fim_default_group11_project.h"
 #include "ps_public.h"
+#include "wifi_api.h"
+
 #if (BLEWIFI_CTRL_BUTTON_SENSOR_EN == 1)
 #include "btn_press_ctrl.h"
 #endif
 #if (BLEWIFI_CTRL_WAKEUP_IO_EN == 1)
 #include "smart_sleep.h"
+#endif
+
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+#include "ssidpwd_proc.h"
 #endif
 
 #define BLEWIFI_CTRL_RESET_DELAY    (3000)  // ms
@@ -63,6 +69,20 @@ uint8_t g_ubAppCtrlRequestRetryTimes;
 uint32_t g_ulAppCtrlAutoConnectInterval;
 uint32_t g_ulAppCtrlWifiDtimTime;
 
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+uint8_t g_iIdxOfApInfo; //Record Idx of AP for doing connection if connction failed
+
+bool g_bAutoconn_flag       = true;
+bool g_bRoaming_flag        = false;
+
+bool g_bConnectReqByUser_flag = false;
+bool g_bScanReqByUser_flag    = false;
+
+extern apinfo_t g_apInfo[MW_FIM_GP11_FIXED_SSID_PWD_NUM+MW_FIM_GP11_SSID_PWD_NUM];
+
+extern uint8_t g_RoamingApInfoTotalCnt;
+extern wifi_config_t wifi_config_req_connect;
+#endif
 
 static void BleWifi_Ctrl_TaskEvtHandler_BleInitComplete(uint32_t evt_type, void *data, int len);
 static void BleWifi_Ctrl_TaskEvtHandler_BleAdvertisingCfm(uint32_t evt_type, void *data, int len);
@@ -154,9 +174,168 @@ uint32_t BleWifi_Ctrl_DtimTimeGet(void)
     return g_ulAppCtrlWifiDtimTime;
 }
 
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+/* According scan result, get bssid with MAX RSSI */
+int BleWifi_Wifi_Get_BSsid(apinfo_t *tApInfo)
+{
+    int iRet = -1;
+    wifi_scan_info_t *ap_list = NULL;
+    uint16_t apCount = 0;
+    int32_t i = 0;
+    int32_t idx = 0;
+    int32_t MaxRssiIdx=0;
+
+    wifi_scan_get_ap_num(&apCount);
+
+    if(apCount == 0)
+    {
+        printf("No AP found\r\n");
+        goto err;
+	}
+	BLEWIFI_ERROR("ap num = %d\n", apCount);
+	ap_list = (wifi_scan_info_t *)malloc(sizeof(wifi_scan_info_t) * apCount);
+
+	if (!ap_list) {
+        printf("Get_BSsid: malloc fail\n");
+		goto err;
+	}
+
+    wifi_scan_get_ap_records(&apCount, ap_list);
+
+    /* build blewifi ap list */
+    for(i = 0; i < apCount; i++)
+    {
+        if(0 == memcmp(ap_list[i].ssid, tApInfo->tSsidPwd.ssid, sizeof(ap_list[i].ssid)))
+        {
+            iRet = 0;
+            MaxRssiIdx = i;
+            for(idx = i; idx < apCount; idx++)
+            {
+                //if there are 2 or more same ssid, find max rssi to connect.
+                if(0 == memcmp(ap_list[idx].ssid, tApInfo->tSsidPwd.ssid, sizeof(ap_list[idx].ssid)))
+                {
+                    if( ap_list[idx].rssi > ap_list[i].rssi )
+                    {
+                        MaxRssiIdx = idx;
+                    }
+                }
+            }
+            break;
+        }
+    }
+
+    if( 0 == iRet )
+    {
+        memcpy(tApInfo->bssid, ap_list[MaxRssiIdx].bssid, 6);
+    }
+
+err:
+    if (ap_list)
+        free(ap_list);
+
+    return iRet;
+}
+
+int Wifi_Roaming_Connect(uint8_t *bssid, uint8_t bssid_len, uint8_t *password, uint8_t pwd_len)
+{
+    int ret=0;
+	uint8_t *conn_data;
+	uint8_t conn_data_len=bssid_len+pwd_len+2;
+
+	conn_data = malloc(sizeof(uint8_t)*conn_data_len);
+    if(conn_data == NULL)
+    {
+         BLEWIFI_ERROR("WiFi_Connect: malloc fail\n");
+         return -1;
+    }
+	memset(conn_data, 0, sizeof(uint8_t)*conn_data_len);
+
+	memcpy(conn_data, bssid, bssid_len);   // BSSID
+	*(conn_data+bssid_len) = 0;            // connected or not
+	*(conn_data+bssid_len+1) = pwd_len;    // password len
+	memcpy((conn_data+bssid_len+2), password, pwd_len);
+
+	ret = BleWifi_Wifi_DoConnect(conn_data, conn_data_len);
+
+    printf("[%s %d]BleWifi_Wifi_DoConnect(ret=%d)\n", __func__, __LINE__, ret);
+
+	free(conn_data);
+
+    return ret;
+}
+
+int BleWifi_Ctrl_DoAutoConnect(void)
+{
+    wifi_scan_config_t scan_config = {0};
+    int ret = -1;
+    int api_ret;
+
+    if ((true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_BLE_CONNECTED)) || (true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTED)))
+    {
+        return ret;
+    }
+
+    if( true == g_bAutoconn_flag )
+    {
+        // if the count of auto-connection list is empty,
+        if (0 == BleWifi_Wifi_AutoConnectListNum())
+        {
+            g_bRoaming_flag = true;
+            g_bAutoconn_flag = false;
+        }
+        else
+        {
+            //printf("\n\n!!! >>> %s,%d, call wifi_auto_connect_start!!!\n\n", __FUNCTION__, __LINE__);
+            api_ret = wifi_auto_connect_start();
+            if( api_ret == 0 )
+            {
+                ret = 0;
+            }
+            else
+            {
+                g_bRoaming_flag = true;
+                g_bAutoconn_flag = false;
+            }
+        }
+    }
+    else
+    {
+        g_bRoaming_flag = true;
+    }
+
+    if (true == g_bRoaming_flag)
+    {
+        if (0 != g_RoamingApInfoTotalCnt)
+        {
+            printf("[%s %d]Roaming List NUM:%d\n", __FUNCTION__, __LINE__, g_RoamingApInfoTotalCnt);
+
+            g_iIdxOfApInfo = 0; //initialize index for roaming connection
+
+            scan_config.show_hidden = 1; // Enable to scan AP whose SSID is hidden
+            scan_config.scan_type = WIFI_SCAN_TYPE_MIX;  // mixed mode
+
+            api_ret = BleWifi_Wifi_DoScan(&scan_config);
+            if (0 == api_ret)
+            {
+                ret = 0;
+            }
+            else
+            {
+                g_bRoaming_flag = false;
+            }
+        }
+        else
+        {
+            g_bRoaming_flag = false;
+        }
+    }
+
+    return ret;
+}
+#else
 void BleWifi_Ctrl_DoAutoConnect(void)
 {
-    uint8_t data[2];
+    wifi_scan_config_t scan_config = {0};
 
     // if the count of auto-connection list is empty, don't do the auto-connect
     if (0 == BleWifi_Wifi_AutoConnectListNum())
@@ -173,14 +352,16 @@ void BleWifi_Ctrl_DoAutoConnect(void)
         // after scan, do the auto-connect
         if (g_ubAppCtrlRequestRetryTimes == BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE)
         {
-            data[0] = 1;    // Enable to scan AP whose SSID is hidden
-            data[1] = 2;    // mixed mode
-            BleWifi_Wifi_DoScan(data, 2);
+            scan_config.show_hidden = 1; // Enable to scan AP whose SSID is hidden
+            scan_config.scan_type = WIFI_SCAN_TYPE_MIX;  // mixed mode
+
+            BleWifi_Wifi_DoScan(&scan_config);
 
             g_ubAppCtrlRequestRetryTimes = BLEWIFI_CTRL_AUTO_CONN_STATE_SCAN;
         }
     }
 }
+#endif
 
 void BleWifi_Ctrl_AutoConnectTrigger(void const *argu)
 {
@@ -326,7 +507,14 @@ static void BleWifi_Ctrl_TaskEvtHandler_WifiInitComplete(uint32_t evt_type, void
     BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_INIT_DONE , true);
 
     /* When device power on, start to do auto-connection. */
+    g_ubAppCtrlRequestRetryTimes = BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE;
     g_ulAppCtrlAutoConnectInterval = BLEWIFI_WIFI_AUTO_CONNECT_INTERVAL_INIT;
+
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+    g_bAutoconn_flag = true;
+    g_bRoaming_flag = false;
+#endif
+
     BleWifi_Ctrl_DoAutoConnect();
 }
 
@@ -346,10 +534,76 @@ static void BleWifi_Ctrl_TaskEvtHandler_WifiResetDefaultInd(uint32_t evt_type, v
     g_ubAppCtrlRequestRetryTimes = BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE;
     g_ulAppCtrlAutoConnectInterval = BLEWIFI_WIFI_AUTO_CONNECT_INTERVAL_INIT;
 
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+    g_bAutoconn_flag = true;
+    g_bRoaming_flag = false;
+#endif
     /* When device power on, start to do auto-connection. */
     BleWifi_Ctrl_DoAutoConnect();
 }
 
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+static void BleWifi_Ctrl_TaskEvtHandler_WifiScanDoneInd(uint32_t evt_type, void *data, int len)
+{
+    int iIdx=0;
+
+    BLEWIFI_INFO("BLEWIFI: MSG BLEWIFI_CTRL_MSG_WIFI_SCAN_DONE_IND \r\n");
+    BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_SCANNING, false);
+
+    if (true == g_bScanReqByUser_flag)
+    {
+        BleWifi_Wifi_SendScanReport();
+        BleWifi_Ble_SendResponse(BLEWIFI_RSP_SCAN_END, 0);
+        g_bScanReqByUser_flag = false;
+
+    }
+    // scan by auto-connect (roaming)
+    else
+    {
+        //BleWifi_Wifi_UpdateScanInfoToAutoConnList(&u8IsUpdate);
+        //printf("[%s,%d] roaming cnt = %d, flag = %d\n\n", __FUNCTION__, __LINE__, g_RoamingApInfoTotalCnt, g_bRoaming_flag);
+
+        if((0 != g_RoamingApInfoTotalCnt) && (true == g_bRoaming_flag))
+        {
+            //printf("\ng_iIdxOfApInfo=%d, g_RoamingApInfoCnt=%d\n", g_iIdxOfApInfo, g_RoamingApInfoTotalCnt);
+            for( iIdx = g_iIdxOfApInfo; iIdx < (MW_FIM_GP11_FIXED_SSID_PWD_NUM+MW_FIM_GP11_SSID_PWD_NUM); iIdx++)
+            {
+                int ret;
+                if (g_apInfo[iIdx].tSsidPwd.used == 0)
+                {
+                    continue;
+                }
+
+                ret = BleWifi_Wifi_Get_BSsid(&(g_apInfo[iIdx]));
+
+                if( 0 == ret )
+                {
+                    printf("\nFound Roaming APInfo[%d]=%s\n\n", iIdx, g_apInfo[iIdx].tSsidPwd.ssid);
+                    g_iIdxOfApInfo = iIdx;
+
+                    ret = Wifi_Roaming_Connect(g_apInfo[iIdx].bssid,  6, g_apInfo[iIdx].tSsidPwd.password, strlen((char *)g_apInfo[iIdx].tSsidPwd.password));
+                    if(0 == ret)
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    printf("\nNot found Roaming APInfo[%d]=%s\n\n", iIdx, g_apInfo[iIdx].tSsidPwd.ssid);
+                }
+            }
+
+            if (iIdx == (MW_FIM_GP11_FIXED_SSID_PWD_NUM+MW_FIM_GP11_SSID_PWD_NUM))
+            {
+                printf("\nNo Roaming AP in Scan list!\n\n");
+                g_bRoaming_flag = false;
+
+                BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND, NULL, 0);
+            }
+        }
+    }
+}
+#else
 static void BleWifi_Ctrl_TaskEvtHandler_WifiScanDoneInd(uint32_t evt_type, void *data, int len)
 {
     uint8_t u8IsUpdate = false;
@@ -379,6 +633,7 @@ static void BleWifi_Ctrl_TaskEvtHandler_WifiScanDoneInd(uint32_t evt_type, void 
         BleWifi_Ble_SendResponse(BLEWIFI_RSP_SCAN_END, 0);
     }
 }
+#endif
 
 static void BleWifi_Ctrl_TaskEvtHandler_WifiConnectionInd(uint32_t evt_type, void *data, int len)
 {
@@ -393,8 +648,167 @@ static void BleWifi_Ctrl_TaskEvtHandler_WifiConnectionInd(uint32_t evt_type, voi
     g_ubAppCtrlRequestRetryTimes = BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE;
     g_ulAppCtrlAutoConnectInterval = BLEWIFI_WIFI_AUTO_CONNECT_INTERVAL_INIT;
     BleWifi_Ble_SendResponse(BLEWIFI_RSP_CONNECT, BLEWIFI_WIFI_CONNECTED_DONE);
+
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+    if( true == g_bConnectReqByUser_flag )
+    {
+        //save ssid and password to FIM
+        wifi_scan_info_t tInfo;
+
+        wifi_sta_get_ap_info(&tInfo);
+
+        //printf("Save AP info:SSID:%s, PWD:%s\n", tInfo.ssid, wifi_config_req_connect.sta_config.password);
+        T_MwFim_GP11_Ssid_PWD tNewSsidPwd;
+
+        memset((void *)&tNewSsidPwd, 0, sizeof(T_MwFim_GP11_Ssid_PWD));
+        memcpy((void *)tNewSsidPwd.ssid, (void *)tInfo.ssid, sizeof(tInfo.ssid));
+        memcpy((void *)tNewSsidPwd.password, (void *)wifi_config_req_connect.sta_config.password, sizeof(wifi_config_req_connect.sta_config.password));
+
+        SsidPwdAdd(tNewSsidPwd);
+
+        g_bConnectReqByUser_flag = false;
+    }
+#endif
 }
 
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+static void BleWifi_Ctrl_TaskEvtHandler_WifiDisconnectionInd(uint32_t evt_type, void *data, int len)
+{
+    int ret;
+
+    BLEWIFI_INFO("BLEWIFI: MSG BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND \r\n");
+    BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING, false);
+    BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTED, false);
+    BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP, false);
+    BleWifi_Wifi_SetDTIM(0);
+
+    wifi_scan_config_t scan_config = {0};
+
+    scan_config.show_hidden = 1; // Enable to scan AP whose SSID is hidden
+    scan_config.scan_type = WIFI_SCAN_TYPE_MIX;  // mixed mode
+
+    if ( len > 0 )
+    {
+        uint8_t *reason = (uint8_t*)(data);
+
+        printf("[%s,%d] WIFI DISCONNECT reason(%d)...\n", __FUNCTION__, __LINE__, *reason);
+
+        if (WIFI_REASON_CODE_AUTO_CONNECT_FAILED == (*reason))
+        {
+            //printf("[%s,%d] auto connect fail...\n", __FUNCTION__, __LINE__);
+
+            if (true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_BLE_CONNECTED))
+            {
+                g_bAutoconn_flag = false;
+                g_bRoaming_flag = false;
+                return;
+            }
+
+            g_bAutoconn_flag = false;
+            g_bRoaming_flag = true;
+
+            //printf("\n[%s,%d]g_iIdxOfApInfo=%d, g_RoamingApInfoCnt=%d\n", __FUNCTION__, __LINE__, g_iIdxOfApInfo, g_RoamingApInfoTotalCnt);
+            if (0 != g_RoamingApInfoTotalCnt)
+            {
+                g_iIdxOfApInfo = 0;
+
+                ret = BleWifi_Wifi_DoScan(&scan_config);
+                if (0 == ret)
+                {
+                    return;
+                }
+                else
+                {
+                    g_bRoaming_flag = false;
+                }
+            }
+            else
+            {
+                g_bRoaming_flag = false;
+            }
+        }
+    }
+
+    // continue the connection retry
+    if (g_ubAppCtrlRequestRetryTimes < BLEWIFI_WIFI_REQ_CONNECT_RETRY_TIMES)
+    {
+        if ((true == g_bRoaming_flag) && (true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_BLE_CONNECTED)))
+        {
+            g_bRoaming_flag = false;
+            g_ubAppCtrlRequestRetryTimes = BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE;
+            return;
+        }
+        ret = BleWifi_Wifi_ReqConnectRetry();
+
+        g_ubAppCtrlRequestRetryTimes++;
+        return;
+    }
+    // stop the connection retry
+    else if (g_ubAppCtrlRequestRetryTimes == BLEWIFI_WIFI_REQ_CONNECT_RETRY_TIMES)
+    {
+        // by roaming trigger
+        if (true == g_bRoaming_flag)
+        {
+            g_iIdxOfApInfo++;
+            if ( g_iIdxOfApInfo < (MW_FIM_GP11_FIXED_SSID_PWD_NUM+MW_FIM_GP11_SSID_PWD_NUM) )
+            {
+                if (false == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_BLE_CONNECTED))
+                {
+                    ret = BleWifi_Wifi_DoScan(&scan_config);
+                    if(0 == ret)
+                    {
+                        return;
+                    }
+                }
+            }
+
+            g_bRoaming_flag = false;
+        }
+        // by user trigger
+        else
+        {
+            g_bConnectReqByUser_flag = false;
+            BleWifi_Ble_SendResponse(BLEWIFI_RSP_CONNECT, BLEWIFI_WIFI_CONNECTED_FAIL);
+        }
+
+        // return to the idle of the connection retry
+        g_ubAppCtrlRequestRetryTimes = BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE;
+        g_ulAppCtrlAutoConnectInterval = BLEWIFI_WIFI_AUTO_CONNECT_INTERVAL_INIT;
+
+        /* do auto-connection. */
+        if (false == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_BLE_CONNECTED))
+        {
+            if ((0 != BleWifi_Wifi_AutoConnectListNum()) || (g_RoamingApInfoTotalCnt != 0))
+            {
+                osTimerStop(g_tAppCtrlAutoConnectTriggerTimer);
+                osTimerStart(g_tAppCtrlAutoConnectTriggerTimer, g_ulAppCtrlAutoConnectInterval);
+
+                g_ulAppCtrlAutoConnectInterval = g_ulAppCtrlAutoConnectInterval + BLEWIFI_WIFI_AUTO_CONNECT_INTERVAL_DIFF;
+                if (g_ulAppCtrlAutoConnectInterval > BLEWIFI_WIFI_AUTO_CONNECT_INTERVAL_MAX)
+                    g_ulAppCtrlAutoConnectInterval = BLEWIFI_WIFI_AUTO_CONNECT_INTERVAL_MAX;
+            }
+        }
+    }
+    else
+    {
+        BleWifi_Ble_SendResponse(BLEWIFI_RSP_DISCONNECT, BLEWIFI_WIFI_DISCONNECTED_DONE);
+
+        /* do auto-connection. */
+        if (false == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_BLE_CONNECTED))
+        {
+            if ((0 != BleWifi_Wifi_AutoConnectListNum()) || (g_RoamingApInfoTotalCnt != 0))
+            {
+                osTimerStop(g_tAppCtrlAutoConnectTriggerTimer);
+                osTimerStart(g_tAppCtrlAutoConnectTriggerTimer, g_ulAppCtrlAutoConnectInterval);
+
+                g_ulAppCtrlAutoConnectInterval = g_ulAppCtrlAutoConnectInterval + BLEWIFI_WIFI_AUTO_CONNECT_INTERVAL_DIFF;
+                if (g_ulAppCtrlAutoConnectInterval > BLEWIFI_WIFI_AUTO_CONNECT_INTERVAL_MAX)
+                    g_ulAppCtrlAutoConnectInterval = BLEWIFI_WIFI_AUTO_CONNECT_INTERVAL_MAX;
+            }
+        }
+    }
+}
+#else
 static void BleWifi_Ctrl_TaskEvtHandler_WifiDisconnectionInd(uint32_t evt_type, void *data, int len)
 {
     BLEWIFI_INFO("BLEWIFI: MSG BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND \r\n");
@@ -449,6 +863,7 @@ static void BleWifi_Ctrl_TaskEvtHandler_WifiDisconnectionInd(uint32_t evt_type, 
         }
     }
 }
+#endif
 
 static void BleWifi_Ctrl_TaskEvtHandler_WifiGotIpInd(uint32_t evt_type, void *data, int len)
 {
@@ -469,6 +884,10 @@ static void BleWifi_Ctrl_TaskEvtHandler_WifiGotIpInd(uint32_t evt_type, void *da
 
 static void BleWifi_Ctrl_TaskEvtHandler_WifiAutoConnectInd(uint32_t evt_type, void *data, int len)
 {
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+        g_bAutoconn_flag = true;
+        g_bRoaming_flag = false;
+#endif
     BLEWIFI_INFO("BLEWIFI: MSG BLEWIFI_CTRL_MSG_WIFI_AUTO_CONNECT_IND \r\n");
     BleWifi_Ctrl_DoAutoConnect();
 }

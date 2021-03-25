@@ -15,7 +15,7 @@
         <TargetCommonOption>
           <Device>ARMCM3</Device>
           <Vendor>ARM</Vendor>
-          <PackID>ARM.CMSIS.5.1.1</PackID>
+          <PackID>ARM.CMSIS.4.5.0</PackID>
           <PackURL>http://www.keil.com/pack/</PackURL>
           <Cpu>IRAM(0x20000000,0x20000) IROM(0x00000000,0x40000) CPUTYPE("Cortex-M3") CLOCK(12000000) ESEL ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
@@ -442,6 +442,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\mw_fim_default_group11_project.c</FilePath>
             </File>
+            <File>
+              <FileName>ssidpwd_proc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\ssidpwd_proc.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -530,7 +535,7 @@
         <TargetCommonOption>
           <Device>ARMCM3</Device>
           <Vendor>ARM</Vendor>
-          <PackID>ARM.CMSIS.5.1.1</PackID>
+          <PackID>ARM.CMSIS.4.5.0</PackID>
           <PackURL>http://www.keil.com/pack/</PackURL>
           <Cpu>IRAM(0x20000000,0x20000) IROM(0x00000000,0x40000) CPUTYPE("Cortex-M3") CLOCK(12000000) ESEL ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
@@ -956,6 +961,11 @@
               <FileName>mw_fim_default_group11_project.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\mw_fim_default_group11_project.c</FilePath>
+            </File>
+            <File>
+              <FileName>ssidpwd_proc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\ssidpwd_proc.c</FilePath>
             </File>
           </Files>
         </Group>

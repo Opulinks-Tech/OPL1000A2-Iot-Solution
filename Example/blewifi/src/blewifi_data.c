@@ -35,6 +35,14 @@
 #include "at_cmd_common.h"
 #include "sys_common_types.h"
 #include "sys_common_api.h"
+#include "blewifi_configuration.h"
+
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+#include "ssidpwd_proc.h"
+extern bool g_bScanReqByUser_flag;
+extern bool g_bConnectReqByUser_flag;
+//extern bool g_bConnectReqByUser_flag;
+#endif
 
 
 #define HI_UINT16(a) (((a) >> 8) & 0xFF)
@@ -591,6 +599,8 @@ done:
 
 static void BleWifi_Ble_ProtocolHandler_Scan(uint16_t type, uint8_t *data, int len)
 {
+    wifi_scan_config_t scan_config = {0};
+
     BLEWIFI_INFO("BLEWIFI: Recv BLEWIFI_REQ_SCAN \r\n");
     if(true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING))
     {
@@ -622,8 +632,14 @@ static void BleWifi_Ble_ProtocolHandler_Scan(uint16_t type, uint8_t *data, int l
 
     if(false == BleWifi_EventStatusGet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_WIFI_SCANNING))
     {
-        BleWifi_Wifi_DoScan(data, len);
+        scan_config.show_hidden = 1;
+        scan_config.scan_type = WIFI_SCAN_TYPE_MIX;
+        BleWifi_Wifi_DoScan(&scan_config);
     }
+
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+    g_bScanReqByUser_flag = true;
+#endif
 
     g_ubAppCtrlRequestRetryTimes = BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE;
 }
@@ -641,6 +657,9 @@ static void BleWifi_Ble_ProtocolHandler_Connect(uint16_t type, uint8_t *data, in
     }
 
     BleWifi_Wifi_DoConnect(data, len);
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+    g_bConnectReqByUser_flag = true;
+#endif
 }
 
 static void BleWifi_Ble_ProtocolHandler_Disconnect(uint16_t type, uint8_t *data, int len)

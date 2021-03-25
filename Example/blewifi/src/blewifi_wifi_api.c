@@ -27,6 +27,10 @@
 #include "at_cmd_app_patch.h"
 #endif
 
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+#include "ssidpwd_proc.h"
+#endif
+
 extern uint8_t g_ubAppCtrlRequestRetryTimes;
 
 wifi_config_t wifi_config_req_connect;
@@ -53,18 +57,119 @@ static T_BleWifi_Wifi_EventHandlerTbl g_tWifiEventHandlerTbl[] =
     {0xFFFFFFFF,                        NULL}
 };
 
-void BleWifi_Wifi_DoScan(uint8_t *data, int len)
+int BleWifi_Wifi_DoScan(wifi_scan_config_t *pstScan_config)
 {
-    wifi_scan_config_t scan_config = {0};
-    scan_config.show_hidden = data[0];
-    scan_config.scan_type = (wifi_scan_type_t)data[1];
+    int ret=0;
 
-    BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_SCANNING , true);
-    wifi_scan_start(&scan_config, NULL);
+    if (true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_SCANNING))
+    {
+        return 0;   // had already been scanning
+    }
+
+    ret = wifi_scan_start(pstScan_config, NULL);
+
+    if (ret == 0)
+    {
+        printf("[ATS]WIFI Scan start\r\n");
+        BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_SCANNING, true);
+    }
+    else
+    {
+        printf("[ATS]WIFI Scan fail\r\n");
+    }
+
+    return ret;
 }
 
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+int BleWifi_Wifi_DoConnect(uint8_t *data, int len)
+{
+    int ret=0;
+    uint8_t ubAPPAutoConnectGetApNum = 0;
+    uint32_t i = 0;
+    wifi_auto_connect_info_t info = {0};
+    uint8_t ubAPPConnect = 1;
+
+    g_ubAppCtrlRequestRetryTimes = 0;
+    memcpy(wifi_config_req_connect.sta_config.bssid, &data[0], WIFI_MAC_ADDRESS_LENGTH);
+
+    //Move it for writefim use
+    memset((char *)wifi_config_req_connect.sta_config.password, 0, strlen((char*)wifi_config_req_connect.sta_config.password));
+    wifi_config_req_connect.sta_config.password_length = data[7];
+    memcpy((char *)wifi_config_req_connect.sta_config.password, &data[8], wifi_config_req_connect.sta_config.password_length);
+
+    if (len >= 8)
+    {
+        // Determine the connected column
+        if (data[WIFI_MAC_ADDRESS_LENGTH])
+        {
+            wifi_auto_connect_get_ap_num(&ubAPPAutoConnectGetApNum);
+            if (ubAPPAutoConnectGetApNum)
+            {
+                memset(&info, 0, sizeof(wifi_auto_connect_info_t));
+                for (i = 0; i < ubAPPAutoConnectGetApNum; i++)
+                {
+                    wifi_auto_connect_get_ap_info(i, &info);
+                    if(!MemCmp(wifi_config_req_connect.sta_config.bssid, info.bssid, sizeof(info.bssid)))
+                    {
+                        //ubAPPConnect = 0;
+
+                        ret = wifi_connection_connect_from_ac_index(i);
+                        if (ret == 0)
+                            BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING, true);
+
+                        return ret;
+                    }
+                }
+            }
+
+        }
+
+        // Can't find ap in the ap record list
+        if (ubAPPConnect)
+        {
+            BLEWIFI_INFO("BLEWIFI: Recv Connect Request\r\n");
+            wifi_set_config(WIFI_MODE_STA, &wifi_config_req_connect);
+            ret = wifi_connection_connect(&wifi_config_req_connect);
+            if (ret == 0)
+                BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING, true);
+        }
+    }
+    else
+    {
+        BleWifi_Ble_SendResponse(BLEWIFI_RSP_CONNECT, BLEWIFI_WIFI_CONNECTED_FAIL);
+        ret = -1;
+    }
+
+    return ret;
+}
+
+int BleWifi_Wifi_ManuallyConnectAP(wifi_config_t *pstWifi_config_req_connect)
+{
+    int ret=0;
+
+    BLEWIFI_INFO("\r\n %d SSID is %s  Recv SSID Password is %s\r\n",__LINE__, wifi_config_req_connect.sta_config.ssid ,wifi_config_req_connect.sta_config.password);
+
+    //clear auto connect info
+    //wifi_auto_connect_reset();
+
+    g_ubAppCtrlRequestRetryTimes = 0;
+
+    wifi_set_config(WIFI_MODE_STA, pstWifi_config_req_connect);
+
+    ret = wifi_connection_connect(pstWifi_config_req_connect);
+    if (ret == 0)
+    {
+        BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING, true);
+    }
+
+    return ret;
+}
+
+#else
 void BleWifi_Wifi_DoConnect(uint8_t *data, int len)
 {
+    int ret = 0;
     uint8_t ubAPPAutoConnectGetApNum = 0;
     uint32_t i = 0;
     wifi_auto_connect_info_t info = {0};
@@ -89,7 +194,11 @@ void BleWifi_Wifi_DoConnect(uint8_t *data, int len)
                     if(!MemCmp(wifi_config_req_connect.sta_config.bssid, info.bssid, sizeof(info.bssid)))
                     {
                         BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING , true);
-                        wifi_connection_connect_from_ac_index(i);
+                        ret = wifi_connection_connect_from_ac_index(i);
+                        if (ret == 0)
+                        {
+                            BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING, true);
+                        }
                         ubAPPConnect = 0;
                         return;
                     }
@@ -107,7 +216,11 @@ void BleWifi_Wifi_DoConnect(uint8_t *data, int len)
             BLEWIFI_INFO("BLEWIFI: Recv Connect Request\r\n");
             BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING, true);
             wifi_set_config(WIFI_MODE_STA, &wifi_config_req_connect);
-            wifi_connection_connect(&wifi_config_req_connect);
+            ret = wifi_connection_connect(&wifi_config_req_connect);
+            if (ret == 0)
+            {
+                BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING, true);
+            }
         }
     }
     else
@@ -115,6 +228,7 @@ void BleWifi_Wifi_DoConnect(uint8_t *data, int len)
         BleWifi_Ble_SendResponse(BLEWIFI_RSP_CONNECT, BLEWIFI_WIFI_CONNECTED_FAIL);
     }
 }
+#endif
 
 void BleWifi_Wifi_DoDisconnect(void)
 {
@@ -301,6 +415,10 @@ release:
 void BleWifi_Wifi_ResetRecord(void)
 {
     uint8_t ubResetResult = 0;
+
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+    SsidPwdClear();
+#endif
 
     printf("%s(%d) : do wifi_auto_connect_reset!!!\n", __func__, __LINE__);
     ubResetResult = wifi_auto_connect_reset();
@@ -565,10 +683,17 @@ void BleWifi_Wifi_DoAutoConnect(void)
     wifi_auto_connect_start();
 }
 
-void BleWifi_Wifi_ReqConnectRetry(void)
+int BleWifi_Wifi_ReqConnectRetry(void)
 {
-    BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING , true);
-    wifi_connection_connect(&wifi_config_req_connect);
+    int ret=0;
+
+    ret = wifi_connection_connect(&wifi_config_req_connect);
+    if (ret == 0)
+    {
+        BleWifi_EventStatusSet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING, true);
+    }
+
+    return ret;
 }
 
 int BleWifi_Wifi_Rssi(int8_t *rssi)
@@ -657,7 +782,11 @@ static int BleWifi_Wifi_EventHandler_Disconnected(wifi_event_id_t event_id, void
     }
     else
     {
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+        BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND, &reason, 1);
+#else
         BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND, NULL, 0);
+#endif
     }
 
     return 0;
@@ -684,7 +813,12 @@ static int BleWifi_Wifi_EventHandler_ConnectionFailed(wifi_event_id_t event_id, 
     uint8_t reason = *((uint8_t*)data);
 
     printf("\r\nWi-Fi Connected failed, reason %d\r\n", reason);
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+    BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND, &reason, 1);
+#else
     BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND, NULL, 0);
+#endif
+
 
     return 0;
 }
@@ -723,6 +857,10 @@ int BleWifi_Wifi_EventHandlerCb(wifi_event_id_t event_id, void *data, uint16_t l
 
 void BleWifi_Wifi_Init(void)
 {
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+    //get SSID
+    SsidPwdInit();
+#endif
     /* Event Loop Initialization */
     wifi_event_loop_init((wifi_event_cb_t)BleWifi_Wifi_EventHandlerCb);
 
@@ -734,4 +872,6 @@ void BleWifi_Wifi_Init(void)
 
     /* Init the beacon time (ms) */
     g_ulBleWifi_Wifi_BeaconTime = 100;
+    //set the count of auto connect ap
+    //wifi_auto_connect_set_ap_num(1);
 }

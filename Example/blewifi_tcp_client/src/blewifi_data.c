@@ -35,10 +35,20 @@
 #include "at_cmd_common.h"
 #include "sys_common_types.h"
 #include "sys_common_api.h"
+#include "blewifi_configuration.h"
+
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+#include "ssidpwd_proc.h"
+extern bool g_bScanReqByUser_flag;
+extern bool g_bConnectReqByUser_flag;
+//extern bool g_bConnectReqByUser_flag;
+#endif
 
 
 #define HI_UINT16(a) (((a) >> 8) & 0xFF)
 #define LO_UINT16(a) ((a) & 0xFF)
+
+extern uint8_t g_ubAppCtrlRequestRetryTimes;
 
 uint8_t g_wifi_disconnectedDoneForAppDoWIFIScan = 1;
 
@@ -589,14 +599,15 @@ done:
 
 static void BleWifi_Ble_ProtocolHandler_Scan(uint16_t type, uint8_t *data, int len)
 {
+    wifi_scan_config_t scan_config = {0};
+
     BLEWIFI_INFO("BLEWIFI: Recv BLEWIFI_REQ_SCAN \r\n");
-    if (true != BleWifi_EventStatusGet(g_tAppCtrlEventGroup , BLEWIFI_CTRL_EVENT_BIT_WIFI_GOT_IP))  //if not get IP , state always is disconnected
+    if(true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING))
     {
         printf(" Postpone Do WIFI Scan Due to Auto Connect running IND \n");
         g_wifi_disconnectedDoneForAppDoWIFIScan = 0;
-        wifi_connection_disconnect_ap();
         int count = 0;
-        while(count < 100)
+        while(count < 10)
         {
             if(g_wifi_disconnectedDoneForAppDoWIFIScan == 1)
             {
@@ -605,18 +616,50 @@ static void BleWifi_Ble_ProtocolHandler_Scan(uint16_t type, uint8_t *data, int l
             else
             {
                 count++;
-                osDelay(10);
+                osDelay(100);
             }
         }// wait event back
         printf(" Postpone Do WIFI Scan Due to Auto Connect running END \n");
     }
-    BleWifi_Wifi_DoScan(data, len);
+
+    // it is still connecting, response the last scan data
+    if(g_wifi_disconnectedDoneForAppDoWIFIScan == 0)
+    {
+        BleWifi_Wifi_SendScanReport();
+        BleWifi_Ble_SendResponse(BLEWIFI_RSP_SCAN_END, 0);
+        return;
+    }
+
+    if(false == BleWifi_EventStatusGet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_WIFI_SCANNING))
+    {
+        scan_config.show_hidden = 1;
+        scan_config.scan_type = WIFI_SCAN_TYPE_MIX;
+        BleWifi_Wifi_DoScan(&scan_config);
+    }
+
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+    g_bScanReqByUser_flag = true;
+#endif
+
+    g_ubAppCtrlRequestRetryTimes = BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE;
 }
 
 static void BleWifi_Ble_ProtocolHandler_Connect(uint16_t type, uint8_t *data, int len)
 {
     BLEWIFI_INFO("BLEWIFI: Recv BLEWIFI_REQ_CONNECT \r\n");
+
+    // it is still connecting or scanning, response the connect fail
+    if ((true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_WIFI_CONNECTING)) ||
+        (true == BleWifi_EventStatusGet(g_tAppCtrlEventGroup, BLEWIFI_CTRL_EVENT_BIT_WIFI_SCANNING)))
+    {
+        BleWifi_Ble_SendResponse(BLEWIFI_RSP_CONNECT, BLEWIFI_WIFI_CONNECTED_FAIL);
+        return;
+    }
+
     BleWifi_Wifi_DoConnect(data, len);
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+    g_bConnectReqByUser_flag = true;
+#endif
 }
 
 static void BleWifi_Ble_ProtocolHandler_Disconnect(uint16_t type, uint8_t *data, int len)

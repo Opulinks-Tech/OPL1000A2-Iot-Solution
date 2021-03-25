@@ -182,6 +182,11 @@ WIFI Set TCA mode enable
 #define BLEWIFI_CTRL_WAKEUP_IO_LEVEL                    GPIO_LEVEL_LOW      // GPIO_LEVEL_HIGH | GPIO_LEVEL_LOW
 #define BLEWIFI_CTRL_WAKEUP_IO_TIMEOUT_DEBOUNCE_TIME    (30)      // 30 ms
 
+// SSID Roaming
+#define BLEWIFI_CTRL_SSID_ROAMING_EN                (1)    //Roaming flag : 0 : disable , 1 : enable
+#define DEFAULT_SSID        "0000000000"
+#define DEFAULT_PASSWORD    "0000000000"
+
 /* UART0 function */
 #define IOT_UART0_EN                                    (1)     // 1: enable / 0: disable
 #define IOT_UART0_TASK_EN                               (1)     // 1: enable / 0: disable

@@ -19,6 +19,7 @@
 
 #include "wifi_types.h"
 #include "wifi_event.h"
+#include "blewifi_configuration.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,7 +96,7 @@ typedef struct {
     uint8_t  bssid[WIFI_MAC_ADDRESS_LENGTH];          /**< AP's MAC address. */
     unsigned long   IP;                               /**< Device's IP. */
     unsigned long   mask;                             /**< Device's Mask. */
-    unsigned long   Gateway;                          /**< Device's Gateway. */     
+    unsigned long   Gateway;                          /**< Device's Gateway. */
     unsigned long   DNS;                              /**< Device's DNS. */
 }__attribute__((packed)) blewifi_wifi_status_info_t;
 
@@ -111,9 +112,14 @@ typedef struct
 #define BLEWIFI_WIFI_DISCONNECTED_DONE  0
 #define BLEWIFI_WIFI_DISCONNECTED_FAIL  1
 
+int BleWifi_Wifi_DoScan(wifi_scan_config_t *pstScan_config);
 
-void BleWifi_Wifi_DoScan(uint8_t *data, int len);
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+int BleWifi_Wifi_DoConnect(uint8_t *data, int len);
+int BleWifi_Wifi_ManuallyConnectAP(wifi_config_t *pstWifi_config_req_connect);
+#else
 void BleWifi_Wifi_DoConnect(uint8_t *data, int len);
+#endif
 void BleWifi_Wifi_DoDisconnect(void);
 void BleWifi_Wifi_ReadDeviceInfo(void);
 void BleWifi_Wifi_WriteDeviceInfo(uint8_t *data, int len);
@@ -126,11 +132,11 @@ int BleWifi_Wifi_SendScanReport(void);
 int BleWifi_Wifi_UpdateScanInfoToAutoConnList(uint8_t *pu8IsUpdate);
 uint8_t BleWifi_Wifi_AutoConnectListNum(void);
 void BleWifi_Wifi_DoAutoConnect(void);
-void BleWifi_Wifi_ReqConnectRetry(void);
+int BleWifi_Wifi_ReqConnectRetry(void);
 int BleWifi_Wifi_Rssi(int8_t *rssi);
 int BleWifi_Wifi_SetDTIM(uint32_t value);
 void BleWifi_Wifi_UpdateBeaconInfo(void);
-	
+
 int BleWifi_Wifi_EventHandlerCb(wifi_event_id_t event_id, void *data, uint16_t length);
 void BleWifi_Wifi_Init(void);
 

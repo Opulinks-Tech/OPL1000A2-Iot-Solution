@@ -29,6 +29,10 @@
 #include "at_cmd_data_process_patch.h"
 #include "blewifi_common.h"
 
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+#include "mw_fim_default_group11_project.h"
+#endif
+
 //#define AT_LOG                      msg_print_uart1
 #define AT_LOG(...)
 
@@ -371,6 +375,98 @@ done:
     return iRet;
 }
 
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+void chomp(char *s) {
+    while(*s && *s != '\n' && *s != '\r') s++;
+
+    *s = 0;
+}
+
+int app_at_cmd_sys_fixed_ap_info(char *buf, int len, int mode)
+{
+    int iRet = 0;
+    int argc = 0;
+    char *argv[AT_MAX_CMD_ARGS] = {0};
+
+    T_MwFim_GP11_Ssid_PWD tDev = {0};
+
+    switch (mode)
+    {
+        case AT_CMD_MODE_READ:
+        {
+            //get Fixed SSID PASSWORD
+            if (MW_FIM_OK != MwFim_FileRead(MW_FIM_IDX_GP11_PROJECT_FIXED_SSID_PASSWORD, 0, MW_FIM_GP11_FIXED_SSID_PWD_SIZE, (uint8_t*)&tDev))
+            {
+                goto done;
+            }
+
+            msg_print_uart1("SSID:%s\r\n", tDev.ssid);
+            msg_print_uart1("PASSWORD:%s\r\n", tDev.password);
+            break;
+        }
+
+        case AT_CMD_MODE_SET:
+        {
+            if (!at_cmd_buf_to_argc_argv(buf, &argc, argv, AT_MAX_CMD_ARGS))
+            {
+                goto done;
+            }
+
+            if((argc != 2) && (argc != 3))
+            {
+                goto done;
+            }
+
+            if(strlen(argv[1]) >= WIFI_MAX_LENGTH_OF_SSID)
+            {
+                msg_print_uart1("Invalid SSID Length\r\n");
+                goto done;
+            }
+            chomp(argv[1]);
+            strcpy((char*)tDev.ssid, argv[1]);
+
+            if ( argc == 3 )
+            {
+                if(strlen(argv[2]) >= WIFI_LENGTH_PASSPHRASE)
+                {
+                    msg_print_uart1("Invalid PASSWORD Length\r\n");
+                    goto done;
+                }
+
+                chomp(argv[2]);
+                strcpy((char*)tDev.password, argv[2]);
+            }
+
+            tDev.used = 1;
+
+            if(MW_FIM_OK != MwFim_FileWrite(MW_FIM_IDX_GP11_PROJECT_FIXED_SSID_PASSWORD, 0, MW_FIM_GP11_FIXED_SSID_PWD_SIZE, (uint8_t*)&tDev))
+            {
+                goto done;
+            }
+
+            break;
+        }
+
+        default:
+            goto done;
+    }
+
+    iRet = 1;
+
+done:
+    if(iRet)
+    {
+        msg_print_uart1("OK\r\n");
+    }
+    else
+    {
+        msg_print_uart1("ERROR\r\n");
+    }
+
+    return iRet;
+}
+#endif
+
 #if (WIFI_OTA_FUNCTION_EN == 1)
 int app_at_cmd_sys_do_wifi_ota(char *buf, int len, int mode)
 {
@@ -610,6 +706,9 @@ at_command_t g_taAppAtCmd[] =
     { "at+readfim",         app_at_cmd_sys_read_fim,            "Read FIM data" },
     { "at+writefim",        app_at_cmd_sys_write_fim,           "Write FIM data" },
     { "at+dtim",            app_at_cmd_sys_dtim_time,           "Wifi DTIM" },
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+    { "at+fixedapinfo",     app_at_cmd_sys_fixed_ap_info,       "fixed AP Info" },
+#endif
 #if (WIFI_OTA_FUNCTION_EN == 1)
     { "at+ota",             app_at_cmd_sys_do_wifi_ota,         "Do Wifi OTA" },
 #endif

@@ -28,7 +28,20 @@ Head Block of The File
 Declaration of data structure
 ********************************************/
 // Sec 3: structure, uniou, enum, linked list
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+const T_MwFim_GP11_Ssid_PWD g_tMwFimDefaultGp11SsidPwd = {0};
 
+const T_MwFim_GP11_Ssid_PWD g_tMwFimDefaultGp11FixedSsidPwd =
+{
+    .ssid        = DEFAULT_SSID,
+    .password    = DEFAULT_PASSWORD,
+};
+
+// the address buffer of device schedule
+uint32_t g_ulaMwFimAddrBufferGP11SsidPwd[MW_FIM_GP11_SSID_PWD_NUM];
+
+uint32_t g_ulaMwFimAddrBufferGP11FixedSsidPwd[MW_FIM_GP11_FIXED_SSID_PWD_NUM];
+#endif
 
 /********************************************
 Declaration of Global Variables & Functions
@@ -38,6 +51,11 @@ Declaration of Global Variables & Functions
 // the information table of group 11
 const T_MwFimFileInfo g_taMwFimGroupTable11_project[] =
 {
+#if (BLEWIFI_CTRL_SSID_ROAMING_EN == 1)
+    {MW_FIM_IDX_GP11_PROJECT_SSID_PASSWORD, MW_FIM_GP11_SSID_PWD_NUM,  MW_FIM_GP11_SSID_PWD_SIZE, (uint8_t*)&g_tMwFimDefaultGp11SsidPwd, g_ulaMwFimAddrBufferGP11SsidPwd},
+
+    {MW_FIM_IDX_GP11_PROJECT_FIXED_SSID_PASSWORD, MW_FIM_GP11_FIXED_SSID_PWD_NUM,  MW_FIM_GP11_FIXED_SSID_PWD_SIZE, (uint8_t*)&g_tMwFimDefaultGp11FixedSsidPwd, g_ulaMwFimAddrBufferGP11FixedSsidPwd},
+#endif
     // the end, don't modify and remove it
     {0xFFFFFFFF,            0x00,              0x00,               NULL,                            NULL}
 };

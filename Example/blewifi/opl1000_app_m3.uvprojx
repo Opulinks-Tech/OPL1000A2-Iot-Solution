@@ -442,6 +442,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\mw_fim_default_group11_project.c</FilePath>
             </File>
+            <File>
+              <FileName>ssidpwd_proc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\ssidpwd_proc.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -936,6 +941,11 @@
               <FileName>mw_fim_default_group11_project.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\mw_fim_default_group11_project.c</FilePath>
+            </File>
+            <File>
+              <FileName>ssidpwd_proc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\ssidpwd_proc.c</FilePath>
             </File>
           </Files>
         </Group>
